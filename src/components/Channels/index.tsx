@@ -23,10 +23,17 @@ import {
   Package,
   AlertTriangle,
   Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import clsx from 'clsx';
 
 interface FeishuPluginStatus {
+  installed: boolean;
+  version: string | null;
+  plugin_name: string | null;
+}
+
+interface QQBotPluginStatus {
   installed: boolean;
   version: string | null;
   plugin_name: string | null;
@@ -51,12 +58,13 @@ interface ChannelField {
 
 const channelInfo: Record<
   string,
-  { 
-    name: string; 
-    icon: React.ReactNode; 
+  {
+    name: string;
+    icon: React.ReactNode;
     color: string;
     fields: ChannelField[];
     helpText?: string;
+    docUrl?: string;
   }
 > = {
   telegram: {
@@ -66,18 +74,23 @@ const channelInfo: Record<
     fields: [
       { key: 'botToken', label: 'Bot Token', type: 'password', placeholder: '从 @BotFather 获取', required: true },
       { key: 'userId', label: 'User ID', type: 'text', placeholder: '你的 Telegram User ID', required: true },
-      { key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
-        { value: 'pairing', label: '配对模式' },
-        { value: 'open', label: '开放模式' },
-        { value: 'disabled', label: '禁用' },
-      ]},
-      { key: 'groupPolicy', label: '群组策略', type: 'select', options: [
-        { value: 'allowlist', label: '白名单' },
-        { value: 'open', label: '开放' },
-        { value: 'disabled', label: '禁用' },
-      ]},
+      {
+        key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
+          { value: 'pairing', label: '配对模式' },
+          { value: 'open', label: '开放模式' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
+      {
+        key: 'groupPolicy', label: '群组策略', type: 'select', options: [
+          { value: 'allowlist', label: '白名单' },
+          { value: 'open', label: '开放' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
     ],
     helpText: '1. 搜索 @BotFather 发送 /newbot 获取 Token  2. 搜索 @userinfobot 获取 User ID',
+    docUrl: 'https://core.telegram.org/bots/tutorial',
   },
   discord: {
     name: 'Discord',
@@ -86,13 +99,16 @@ const channelInfo: Record<
     fields: [
       { key: 'botToken', label: 'Bot Token', type: 'password', placeholder: 'Discord Bot Token', required: true },
       { key: 'testChannelId', label: '测试 Channel ID', type: 'text', placeholder: '用于发送测试消息的频道 ID (可选)' },
-      { key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
-        { value: 'pairing', label: '配对模式' },
-        { value: 'open', label: '开放模式' },
-        { value: 'disabled', label: '禁用' },
-      ]},
+      {
+        key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
+          { value: 'pairing', label: '配对模式' },
+          { value: 'open', label: '开放模式' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
     ],
     helpText: '从 Discord Developer Portal 获取，开启开发者模式可复制 Channel ID',
+    docUrl: 'https://discord.com/developers/docs/intro',
   },
   slack: {
     name: 'Slack',
@@ -104,6 +120,7 @@ const channelInfo: Record<
       { key: 'testChannelId', label: '测试 Channel ID', type: 'text', placeholder: '用于发送测试消息的频道 ID (可选)' },
     ],
     helpText: '从 Slack API 后台获取，Channel ID 可从频道详情复制',
+    docUrl: 'https://api.slack.com/start',
   },
   feishu: {
     name: '飞书',
@@ -113,56 +130,73 @@ const channelInfo: Record<
       { key: 'appId', label: 'App ID', type: 'text', placeholder: '飞书应用 App ID', required: true },
       { key: 'appSecret', label: 'App Secret', type: 'password', placeholder: '飞书应用 App Secret', required: true },
       { key: 'testChatId', label: '测试 Chat ID', type: 'text', placeholder: '用于发送测试消息的群聊/用户 ID (可选)' },
-      { key: 'connectionMode', label: '连接模式', type: 'select', options: [
-        { value: 'websocket', label: 'WebSocket (推荐)' },
-        { value: 'webhook', label: 'Webhook' },
-      ]},
-      { key: 'domain', label: '部署区域', type: 'select', options: [
-        { value: 'feishu', label: '国内 (feishu.cn)' },
-        { value: 'lark', label: '海外 (larksuite.com)' },
-      ]},
-      { key: 'requireMention', label: '需要 @提及', type: 'select', options: [
-        { value: 'true', label: '是' },
-        { value: 'false', label: '否' },
-      ]},
+      {
+        key: 'connectionMode', label: '连接模式', type: 'select', options: [
+          { value: 'websocket', label: 'WebSocket (推荐)' },
+          { value: 'webhook', label: 'Webhook' },
+        ]
+      },
+      {
+        key: 'domain', label: '部署区域', type: 'select', options: [
+          { value: 'feishu', label: '国内 (feishu.cn)' },
+          { value: 'lark', label: '海外 (larksuite.com)' },
+        ]
+      },
+      {
+        key: 'requireMention', label: '需要 @提及', type: 'select', options: [
+          { value: 'true', label: '是' },
+          { value: 'false', label: '否' },
+        ]
+      },
     ],
     helpText: '从飞书开放平台获取凭证，Chat ID 可从群聊设置中获取',
+    docUrl: 'https://open.feishu.cn/document/home/index',
   },
   imessage: {
     name: 'iMessage',
     icon: <Apple size={20} />,
     color: 'text-green-400',
     fields: [
-      { key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
-        { value: 'pairing', label: '配对模式' },
-        { value: 'open', label: '开放模式' },
-        { value: 'disabled', label: '禁用' },
-      ]},
-      { key: 'groupPolicy', label: '群组策略', type: 'select', options: [
-        { value: 'allowlist', label: '白名单' },
-        { value: 'open', label: '开放' },
-        { value: 'disabled', label: '禁用' },
-      ]},
+      {
+        key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
+          { value: 'pairing', label: '配对模式' },
+          { value: 'open', label: '开放模式' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
+      {
+        key: 'groupPolicy', label: '群组策略', type: 'select', options: [
+          { value: 'allowlist', label: '白名单' },
+          { value: 'open', label: '开放' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
     ],
     helpText: '仅支持 macOS，需要授权消息访问权限',
+    docUrl: 'https://support.apple.com/guide/messages/welcome/mac',
   },
   whatsapp: {
     name: 'WhatsApp',
     icon: <MessageCircle size={20} />,
     color: 'text-green-500',
     fields: [
-      { key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
-        { value: 'pairing', label: '配对模式' },
-        { value: 'open', label: '开放模式' },
-        { value: 'disabled', label: '禁用' },
-      ]},
-      { key: 'groupPolicy', label: '群组策略', type: 'select', options: [
-        { value: 'allowlist', label: '白名单' },
-        { value: 'open', label: '开放' },
-        { value: 'disabled', label: '禁用' },
-      ]},
+      {
+        key: 'dmPolicy', label: '私聊策略', type: 'select', options: [
+          { value: 'pairing', label: '配对模式' },
+          { value: 'open', label: '开放模式' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
+      {
+        key: 'groupPolicy', label: '群组策略', type: 'select', options: [
+          { value: 'allowlist', label: '白名单' },
+          { value: 'open', label: '开放' },
+          { value: 'disabled', label: '禁用' },
+        ]
+      },
     ],
     helpText: '需要扫描二维码登录，运行: openclaw channels login --channel whatsapp',
+    docUrl: 'https://business.whatsapp.com/developers',
   },
   wechat: {
     name: '微信',
@@ -173,6 +207,7 @@ const channelInfo: Record<
       { key: 'appSecret', label: 'App Secret', type: 'password', placeholder: '微信开放平台 App Secret' },
     ],
     helpText: '微信公众号/企业微信配置',
+    docUrl: 'https://developers.weixin.qq.com/doc/',
   },
   dingtalk: {
     name: '钉钉',
@@ -183,6 +218,18 @@ const channelInfo: Record<
       { key: 'appSecret', label: 'App Secret', type: 'password', placeholder: '钉钉应用 App Secret' },
     ],
     helpText: '从钉钉开放平台获取',
+    docUrl: 'https://open.dingtalk.com/document/',
+  },
+  qqbot: {
+    name: 'QQ',
+    icon: <MessageSquare size={20} />,
+    color: 'text-sky-400',
+    fields: [
+      { key: 'appId', label: 'AppID', type: 'text', placeholder: 'QQ 机器人 AppID', required: true },
+      { key: 'appSecret', label: 'AppSecret', type: 'password', placeholder: 'QQ 机器人 AppSecret', required: true },
+    ],
+    helpText: '从 QQ 开放平台 (q.qq.com) 获取 AppID 和 AppSecret',
+    docUrl: 'https://q.qq.com/wiki/',
   },
 };
 
@@ -203,12 +250,17 @@ export function Channels() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  
+
   // 飞书插件状态
   const [feishuPluginStatus, setFeishuPluginStatus] = useState<FeishuPluginStatus | null>(null);
   const [feishuPluginLoading, setFeishuPluginLoading] = useState(false);
   const [feishuPluginInstalling, setFeishuPluginInstalling] = useState(false);
-  
+
+  // QQ Bot 插件状态
+  const [qqbotPluginStatus, setQqbotPluginStatus] = useState<QQBotPluginStatus | null>(null);
+  const [qqbotPluginLoading, setQqbotPluginLoading] = useState(false);
+  const [qqbotPluginInstalling, setQqbotPluginInstalling] = useState(false);
+
   // 跟踪哪些密码字段显示明文
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
 
@@ -223,7 +275,7 @@ export function Channels() {
       return next;
     });
   };
-  
+
   // 检查飞书插件状态
   const checkFeishuPlugin = async () => {
     setFeishuPluginLoading(true);
@@ -237,7 +289,7 @@ export function Channels() {
       setFeishuPluginLoading(false);
     }
   };
-  
+
   // 安装飞书插件
   const handleInstallFeishuPlugin = async () => {
     setFeishuPluginInstalling(true);
@@ -252,20 +304,49 @@ export function Channels() {
       setFeishuPluginInstalling(false);
     }
   };
-  
+
+  // 检查 QQ Bot 插件状态
+  const checkQQBotPlugin = async () => {
+    setQqbotPluginLoading(true);
+    try {
+      const status = await invoke<QQBotPluginStatus>('check_qqbot_plugin');
+      setQqbotPluginStatus(status);
+    } catch (e) {
+      console.error('检查 QQ Bot 插件失败:', e);
+      setQqbotPluginStatus({ installed: false, version: null, plugin_name: null });
+    } finally {
+      setQqbotPluginLoading(false);
+    }
+  };
+
+  // 安装 QQ Bot 插件
+  const handleInstallQQBotPlugin = async () => {
+    setQqbotPluginInstalling(true);
+    try {
+      const result = await invoke<string>('install_qqbot_plugin');
+      alert(result);
+      // 刷新插件状态
+      await checkQQBotPlugin();
+    } catch (e) {
+      alert('安装失败: ' + e);
+    } finally {
+      setQqbotPluginInstalling(false);
+    }
+  };
+
   // 显示清空确认
   const handleShowClearConfirm = () => {
     if (!selectedChannel) return;
     setShowClearConfirm(true);
   };
-  
+
   // 执行清空渠道配置
   const handleClearConfig = async () => {
     if (!selectedChannel) return;
-    
+
     const channel = channels.find((c) => c.id === selectedChannel);
     const channelName = channel ? channelInfo[channel.channel_type]?.name || channel.channel_type : selectedChannel;
-    
+
     setShowClearConfirm(false);
     setClearing(true);
     try {
@@ -289,14 +370,14 @@ export function Channels() {
       setClearing(false);
     }
   };
-  
+
   // 快速测试
   const handleQuickTest = async () => {
     if (!selectedChannel) return;
-    
+
     setTesting(true);
     setTestResult(null);
-    
+
     try {
       const result = await invoke<{
         success: boolean;
@@ -304,7 +385,7 @@ export function Channels() {
         message: string;
         error: string | null;
       }>('test_channel', { channelType: selectedChannel });
-      
+
       setTestResult({
         success: result.success,
         message: result.message,
@@ -320,14 +401,14 @@ export function Channels() {
       setTesting(false);
     }
   };
-  
+
   // WhatsApp 扫码登录
   const handleWhatsAppLogin = async () => {
     setLoginLoading(true);
     try {
       // 调用后端命令启动 WhatsApp 登录
       await invoke('start_channel_login', { channelType: 'whatsapp' });
-      
+
       // 开始轮询检查登录状态
       const pollInterval = setInterval(async () => {
         try {
@@ -335,7 +416,7 @@ export function Channels() {
             success: boolean;
             message: string;
           }>('test_channel', { channelType: 'whatsapp' });
-          
+
           if (result.success) {
             clearInterval(pollInterval);
             setLoginLoading(false);
@@ -351,13 +432,13 @@ export function Channels() {
           // 继续轮询
         }
       }, 3000); // 每3秒检查一次
-      
+
       // 60秒后停止轮询
       setTimeout(() => {
         clearInterval(pollInterval);
         setLoginLoading(false);
       }, 60000);
-      
+
       alert('请在弹出的终端窗口中扫描二维码完成登录\n\n登录成功后界面会自动更新');
     } catch (e) {
       alert('启动登录失败: ' + e);
@@ -380,7 +461,7 @@ export function Channels() {
     const init = async () => {
       try {
         const result = await fetchChannels();
-        
+
         // 自动选择第一个已配置的渠道
         const configured = result.find((c) => c.enabled);
         if (configured) {
@@ -396,10 +477,10 @@ export function Channels() {
   const handleChannelSelect = (channelId: string, channelList?: ChannelConfig[]) => {
     setSelectedChannel(channelId);
     setTestResult(null); // 清除测试结果
-    
+
     const list = channelList || channels;
     const channel = list.find((c) => c.id === channelId);
-    
+
     if (channel) {
       const form: Record<string, string> = {};
       Object.entries(channel.config).forEach(([key, value]) => {
@@ -411,10 +492,14 @@ export function Channels() {
         }
       });
       setConfigForm(form);
-      
+
       // 如果选择的是飞书渠道，检查插件状态
       if (channel.channel_type === 'feishu') {
         checkFeishuPlugin();
+      }
+      // 如果选择的是 QQ 渠道，检查插件状态
+      if (channel.channel_type === 'qqbot') {
+        checkQQBotPlugin();
       }
     } else {
       setConfigForm({});
@@ -423,12 +508,12 @@ export function Channels() {
 
   const handleSave = async () => {
     if (!selectedChannel) return;
-    
+
     setSaving(true);
     try {
       const channel = channels.find((c) => c.id === selectedChannel);
       if (!channel) return;
-      
+
       // 转换表单值
       const config: Record<string, unknown> = {};
       Object.entries(configForm).forEach(([key, value]) => {
@@ -440,17 +525,17 @@ export function Channels() {
           config[key] = value;
         }
       });
-      
+
       await invoke('save_channel_config', {
         channel: {
           ...channel,
           config,
         },
       });
-      
+
       // 刷新列表
       await fetchChannels();
-      
+
       alert('渠道配置已保存！');
     } catch (e) {
       console.error('保存失败:', e);
@@ -467,11 +552,11 @@ export function Channels() {
   const hasValidConfig = (channel: ChannelConfig) => {
     const info = channelInfo[channel.channel_type];
     if (!info) return channel.enabled;
-    
+
     // 检查是否有必填字段已填写
     const requiredFields = info.fields.filter((f) => f.required);
     if (requiredFields.length === 0) return channel.enabled;
-    
+
     return requiredFields.some((field) => {
       const value = channel.config[field.key];
       return value !== undefined && value !== null && value !== '';
@@ -504,7 +589,7 @@ export function Channels() {
               };
               const isSelected = selectedChannel === channel.id;
               const isConfigured = hasValidConfig(channel);
-              
+
               return (
                 <button
                   key={channel.id}
@@ -639,6 +724,66 @@ export function Channels() {
                   </div>
                 )}
 
+                {/* QQ Bot 插件状态提示 */}
+                {currentChannel.channel_type === 'qqbot' && (
+                  <div className="mb-4">
+                    {qqbotPluginLoading ? (
+                      <div className="p-4 bg-dark-600 rounded-xl border border-dark-500 flex items-center gap-3">
+                        <Loader2 size={20} className="animate-spin text-gray-400" />
+                        <span className="text-gray-400">正在检查 QQ Bot 插件状态...</span>
+                      </div>
+                    ) : qqbotPluginStatus?.installed ? (
+                      <div className="p-4 bg-green-500/10 rounded-xl border border-green-500/30 flex items-center gap-3">
+                        <Package size={20} className="text-green-400" />
+                        <div className="flex-1">
+                          <p className="text-green-400 font-medium">QQ Bot 插件已安装</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {qqbotPluginStatus.plugin_name || '@sliverp/qqbot'}
+                            {qqbotPluginStatus.version && ` v${qqbotPluginStatus.version}`}
+                          </p>
+                        </div>
+                        <CheckCircle size={16} className="text-green-400" />
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/30">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle size={20} className="text-amber-400 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-amber-400 font-medium">需要安装 QQ Bot 插件</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              QQ 渠道需要先安装 @sliverp/qqbot 插件才能使用。
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                onClick={handleInstallQQBotPlugin}
+                                disabled={qqbotPluginInstalling}
+                                className="btn-primary flex items-center gap-2 text-sm py-2"
+                              >
+                                {qqbotPluginInstalling ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : (
+                                  <Download size={14} />
+                                )}
+                                {qqbotPluginInstalling ? '安装中...' : '一键安装插件'}
+                              </button>
+                              <button
+                                onClick={checkQQBotPlugin}
+                                disabled={qqbotPluginLoading}
+                                className="btn-secondary flex items-center gap-2 text-sm py-2"
+                              >
+                                刷新状态
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              或手动执行: <code className="px-1.5 py-0.5 bg-dark-600 rounded text-gray-400">openclaw plugins install @sliverp/qqbot@latest</code>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   {currentInfo.fields.map((field) => (
                     <div key={field.key}>
@@ -649,7 +794,7 @@ export function Channels() {
                           <span className="ml-2 text-green-500 text-xs">✓</span>
                         )}
                       </label>
-                      
+
                       {field.type === 'select' ? (
                         <select
                           value={configForm[field.key] || ''}
@@ -748,68 +893,89 @@ export function Channels() {
                     </div>
                   )}
 
-                  {/* 操作按钮 */}
-                  <div className="pt-4 border-t border-dark-500 flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="btn-primary flex items-center gap-2"
-                    >
-                      {saving ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Check size={16} />
-                      )}
-                      保存配置
-                    </button>
-                    
-                    {/* 快速测试按钮 */}
-                    <button
-                      onClick={handleQuickTest}
-                      disabled={testing}
-                      className="btn-secondary flex items-center gap-2"
-                    >
-                      {testing ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Play size={16} />
-                      )}
-                      快速测试
-                    </button>
-                    
-                    {/* 清空配置按钮 */}
-                    {!showClearConfirm ? (
+                  {/* 操作按钮 - 2×2 网格布局 */}
+                  <div className="pt-4 border-t border-dark-500">
+                    <div className="grid grid-cols-2 gap-3">
                       <button
-                        onClick={handleShowClearConfirm}
-                        disabled={clearing}
-                        className="btn-secondary flex items-center gap-2 text-red-400 hover:text-red-300 hover:border-red-500/50"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="btn-primary flex items-center justify-center gap-2 text-sm px-4 py-2.5"
                       >
-                        {clearing ? (
-                          <Loader2 size={16} className="animate-spin" />
+                        {saving ? (
+                          <Loader2 size={15} className="animate-spin" />
                         ) : (
-                          <Trash2 size={16} />
+                          <Check size={15} />
                         )}
-                        清空配置
+                        保存配置
                       </button>
-                    ) : (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 rounded-lg border border-red-500/50">
-                        <span className="text-sm text-red-300">确定清空？</span>
+
+                      {/* 快速测试按钮 */}
+                      <button
+                        onClick={handleQuickTest}
+                        disabled={testing}
+                        className="btn-secondary flex items-center justify-center gap-2 text-sm px-4 py-2.5"
+                      >
+                        {testing ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Play size={15} />
+                        )}
+                        快速测试
+                      </button>
+
+                      {/* 清空配置按钮 */}
+                      {!showClearConfirm ? (
                         <button
-                          onClick={handleClearConfig}
-                          className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          onClick={handleShowClearConfirm}
+                          disabled={clearing}
+                          className="btn-secondary flex items-center justify-center gap-2 text-sm px-4 py-2.5 text-red-400 hover:text-red-300 hover:border-red-500/50"
                         >
-                          确定
+                          {clearing ? (
+                            <Loader2 size={15} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={15} />
+                          )}
+                          清空配置
                         </button>
-                        <button
-                          onClick={() => setShowClearConfirm(false)}
-                          className="px-2 py-1 text-xs bg-dark-600 text-gray-300 rounded hover:bg-dark-500 transition-colors"
-                        >
-                          取消
-                        </button>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-red-500/20 rounded-lg border border-red-500/50">
+                          <span className="text-sm text-red-300">确定清空？</span>
+                          <button
+                            onClick={handleClearConfig}
+                            className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          >
+                            确定
+                          </button>
+                          <button
+                            onClick={() => setShowClearConfirm(false)}
+                            className="px-2 py-1 text-xs bg-dark-600 text-gray-300 rounded hover:bg-dark-500 transition-colors"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 配置说明按钮 */}
+                      <button
+                        onClick={async () => {
+                          const docUrl = currentInfo?.docUrl;
+                          if (docUrl) {
+                            try {
+                              const { open } = await import('@tauri-apps/plugin-shell');
+                              await open(docUrl);
+                            } catch {
+                              window.open(docUrl, '_blank');
+                            }
+                          }
+                        }}
+                        className="btn-secondary flex items-center justify-center gap-2 text-sm px-4 py-2.5 text-blue-400 hover:text-blue-300 hover:border-blue-500/50"
+                      >
+                        <ExternalLink size={15} />
+                        配置说明
+                      </button>
+                    </div>
                   </div>
-                  
+
                   {/* 测试结果显示 */}
                   {testResult && (
                     <motion.div

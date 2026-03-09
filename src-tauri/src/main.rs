@@ -57,12 +57,18 @@ fn main() {
             // 飞书插件管理
             config::check_feishu_plugin,
             config::install_feishu_plugin,
+            // QQ Bot 插件管理
+            config::check_qqbot_plugin,
+            config::install_qqbot_plugin,
             // 诊断测试
             diagnostics::run_doctor,
             diagnostics::test_ai_connection,
             diagnostics::test_channel,
             diagnostics::get_system_info,
             diagnostics::start_channel_login,
+            // 安全检测
+            diagnostics::run_security_scan,
+            diagnostics::fix_security_issues,
             // 安装器
             installer::check_environment,
             installer::install_nodejs,

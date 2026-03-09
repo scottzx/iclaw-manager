@@ -16,6 +16,7 @@ const pageTitles: Record<PageType, { title: string; description: string }> = {
   skills: { title: '技能库', description: '管理内置、官方、社区与自定义技能' },
   testing: { title: '测试诊断', description: '系统诊断与问题排查' },
   logs: { title: '应用日志', description: '查看 Manager 应用的控制台日志' },
+  security: { title: '安全防护', description: '安全风险检测与一键修复' },
   settings: { title: '设置', description: '身份配置与高级选项' },
 };
 

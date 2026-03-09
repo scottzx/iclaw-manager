@@ -853,6 +853,7 @@ pub async fn get_channels_config() -> Result<Vec<ChannelConfig>, String> {
         ("imessage", "imessage", vec![]),
         ("wechat", "wechat", vec![]),
         ("dingtalk", "dingtalk", vec![]),
+        ("qqbot", "qqbot", vec![]),
     ];
     
     for (channel_id, channel_type, test_fields) in channel_types {
@@ -1144,6 +1145,105 @@ pub async fn install_feishu_plugin() -> Result<String, String> {
         Err(e) => {
             error!("[飞书插件] ✗ 安装失败: {}", e);
             Err(format!("安装飞书插件失败: {}\n\n请手动执行: openclaw plugins install @m1heng-clawd/feishu", e))
+        }
+    }
+}
+
+// ============ QQ Bot 插件管理 ============
+
+/// QQ Bot 插件状态
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QQBotPluginStatus {
+    pub installed: bool,
+    pub version: Option<String>,
+    pub plugin_name: Option<String>,
+}
+
+/// 检查 QQ Bot 插件是否已安装
+#[command]
+pub async fn check_qqbot_plugin() -> Result<QQBotPluginStatus, String> {
+    info!("[QQ Bot 插件] 检查 QQ Bot 插件安装状态...");
+    
+    // 执行 openclaw plugins list 命令
+    match shell::run_openclaw(&["plugins", "list"]) {
+        Ok(output) => {
+            debug!("[QQ Bot 插件] plugins list 输出: {}", output);
+            
+            // 查找包含 qqbot 的行（不区分大小写）
+            let lines: Vec<&str> = output.lines().collect();
+            let qqbot_line = lines.iter().find(|line| {
+                line.to_lowercase().contains("qqbot")
+            });
+            
+            if let Some(line) = qqbot_line {
+                info!("[QQ Bot 插件] ✓ QQ Bot 插件已安装: {}", line);
+                
+                // 尝试解析版本号
+                let version = if line.contains('@') {
+                    line.split('@').last().map(|s| s.trim().to_string())
+                } else {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    parts.iter()
+                        .find(|p| p.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
+                        .map(|s| s.to_string())
+                };
+                
+                Ok(QQBotPluginStatus {
+                    installed: true,
+                    version,
+                    plugin_name: Some(line.trim().to_string()),
+                })
+            } else {
+                info!("[QQ Bot 插件] ✗ QQ Bot 插件未安装");
+                Ok(QQBotPluginStatus {
+                    installed: false,
+                    version: None,
+                    plugin_name: None,
+                })
+            }
+        }
+        Err(e) => {
+            warn!("[QQ Bot 插件] 检查插件列表失败: {}", e);
+            Ok(QQBotPluginStatus {
+                installed: false,
+                version: None,
+                plugin_name: None,
+            })
+        }
+    }
+}
+
+/// 安装 QQ Bot 插件
+#[command]
+pub async fn install_qqbot_plugin() -> Result<String, String> {
+    info!("[QQ Bot 插件] 开始安装 QQ Bot 插件...");
+    
+    // 先检查是否已安装
+    let status = check_qqbot_plugin().await?;
+    if status.installed {
+        info!("[QQ Bot 插件] QQ Bot 插件已安装，跳过");
+        return Ok(format!("QQ Bot 插件已安装: {}", status.plugin_name.unwrap_or_default()));
+    }
+    
+    // 安装 QQ Bot 插件
+    info!("[QQ Bot 插件] 执行 openclaw plugins install @sliverp/qqbot@latest ...");
+    match shell::run_openclaw(&["plugins", "install", "@sliverp/qqbot@latest"]) {
+        Ok(output) => {
+            info!("[QQ Bot 插件] 安装输出: {}", output);
+            
+            // 验证安装结果
+            let verify_status = check_qqbot_plugin().await?;
+            if verify_status.installed {
+                info!("[QQ Bot 插件] ✓ QQ Bot 插件安装成功");
+                Ok(format!("QQ Bot 插件安装成功: {}", verify_status.plugin_name.unwrap_or_default()))
+            } else {
+                warn!("[QQ Bot 插件] 安装命令执行成功但插件未找到");
+                Err("安装命令执行成功但插件未找到，请检查 openclaw 版本".to_string())
+            }
+        }
+        Err(e) => {
+            error!("[QQ Bot 插件] ✗ 安装失败: {}", e);
+            Err(format!("安装 QQ Bot 插件失败: {}\n\n请手动执行: openclaw plugins install @sliverp/qqbot@latest", e))
         }
     }
 }

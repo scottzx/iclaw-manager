@@ -8,6 +8,7 @@ import {
   FlaskConical,
   ScrollText,
   Settings,
+  ShieldAlert,
 } from 'lucide-react';
 import { PageType } from '../../App';
 import clsx from 'clsx';
@@ -32,6 +33,7 @@ const menuItems: { id: PageType; label: string; icon: React.ElementType }[] = [
   { id: 'skills', label: '技能库', icon: Puzzle },
   { id: 'testing', label: '测试诊断', icon: FlaskConical },
   { id: 'logs', label: '应用日志', icon: ScrollText },
+  { id: 'security', label: '安全防护', icon: ShieldAlert },
   { id: 'settings', label: '设置', icon: Settings },
 ];
 
