@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import {
   CheckCircle,
   XCircle,
@@ -10,6 +9,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { invoke } from '../../lib/invoke-shim';
 import { testingLogger } from '../../lib/logger';
 
 interface DiagnosticResult {

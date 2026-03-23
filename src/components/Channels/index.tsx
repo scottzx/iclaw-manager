@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import {
   MessageCircle,
   Hash,
@@ -27,6 +26,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../lib/tauri';
+import { invoke } from '../../lib/invoke-shim';
 
 interface FeishuPluginStatus {
   installed: boolean;
@@ -499,7 +500,7 @@ export function Channels() {
     setShowClearConfirm(false);
     setClearing(true);
     try {
-      await invoke('clear_channel_config', { channelId: selectedChannel });
+      await api.clearChannelConfig(selectedChannel);
       // 清空表单
       setConfigForm({});
       // 刷新列表
@@ -556,15 +557,12 @@ export function Channels() {
     setLoginLoading(true);
     try {
       // 调用后端命令启动 WhatsApp 登录
-      await invoke('start_channel_login', { channelType: 'whatsapp' });
+      await api.startChannelLogin('whatsapp');
 
       // 开始轮询检查登录状态
       const pollInterval = setInterval(async () => {
         try {
-          const result = await invoke<{
-            success: boolean;
-            message: string;
-          }>('test_channel', { channelType: 'whatsapp' });
+          const result = await api.testChannel('whatsapp');
 
           if (result.success) {
             clearInterval(pollInterval);
@@ -675,11 +673,9 @@ export function Channels() {
         }
       });
 
-      await invoke('save_channel_config', {
-        channel: {
-          ...channel,
-          config,
-        },
+      await api.saveChannelConfig({
+        ...channel!,
+        config,
       });
 
       // 刷新列表

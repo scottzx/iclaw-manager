@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import {
   Play,
   Square,
@@ -10,6 +9,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../lib/tauri';
 import { serviceLogger } from '../../lib/logger';
 
 export function ServiceManager() {
@@ -22,7 +22,7 @@ export function ServiceManager() {
 
   const fetchLogs = async () => {
     try {
-      const result = await invoke<string[]>('get_logs', { lines: 100 });
+      const result = await api.getLogs(100);
       setLogs(result);
       serviceLogger.debug(`获取到 ${result.length} 行日志`);
     } catch (e) {
@@ -54,7 +54,18 @@ export function ServiceManager() {
     serviceLogger.info(`正在执行: ${action}_service`);
     setActionLoading(action);
     try {
-      const result = await invoke(`${action}_service`);
+      let result: string;
+      switch (action) {
+        case 'start':
+          result = await api.startService();
+          break;
+        case 'stop':
+          result = await api.stopService();
+          break;
+        case 'restart':
+          result = await api.restartService();
+          break;
+      }
       serviceLogger.info(`✅ ${action} 操作成功`, result);
       await fetchLogs();
     } catch (e) {

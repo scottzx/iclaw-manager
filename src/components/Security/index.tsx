@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import {
     ShieldAlert,
     ShieldCheck,
@@ -20,6 +19,7 @@ import {
     Server,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { invoke } from '../../lib/invoke-shim';
 
 // 安全风险项接口
 interface SecurityIssue {

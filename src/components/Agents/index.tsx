@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import {
     Users,
     Plus,
@@ -21,6 +20,7 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { invoke } from '../../lib/invoke-shim';
 
 // ============ 类型定义 ============
 

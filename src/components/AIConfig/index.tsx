@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import {
   Check,
@@ -23,6 +22,8 @@ import {
   Pencil,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../lib/tauri';
+import { invoke } from '../../lib/invoke-shim';
 import { aiLogger } from '../../lib/logger';
 
 // ============ 类型定义 ============
@@ -235,13 +236,7 @@ function ProviderDialog({ officialProviders, onClose, onSave, editingProvider }:
         };
       });
 
-      await invoke('save_provider', {
-        providerName,
-        baseUrl,
-        apiKey: apiKey || null,
-        apiType,
-        models,
-      });
+      await api.saveProvider(providerName, baseUrl, apiKey || null, apiType, models);
 
       aiLogger.info(`✓ Provider ${providerName} 已${isEditing ? '更新' : '保存'}`);
       onSave();
@@ -661,7 +656,7 @@ function ProviderCard({ provider, officialProviders, onSetPrimary, onRefresh, on
     setDeleting(true);
     setDeleteError(null);
     try {
-      await invoke('delete_provider', { providerName: provider.name });
+      await api.deleteProvider(provider.name);
       setShowDeleteConfirm(false);
       onRefresh();
     } catch (e) {
@@ -916,7 +911,7 @@ export function AIConfig() {
 
   const handleSetPrimary = async (modelId: string) => {
     try {
-      await invoke('set_primary_model', { modelId });
+      await api.setPrimaryModel(modelId);
       aiLogger.info(`主模型已设置为: ${modelId}`);
       loadData();
     } catch (e) {

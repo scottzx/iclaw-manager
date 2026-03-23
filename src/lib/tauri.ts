@@ -1,208 +1,121 @@
-import { invoke } from '@tauri-apps/api/core';
+// Re-export all types from the new API service
+export type {
+  ServiceStatus,
+  SystemInfo,
+  AIProviderOption,
+  AIModelOption,
+  OfficialProvider,
+  SuggestedModel,
+  ConfiguredProvider,
+  ConfiguredModel,
+  AIConfigOverview,
+  ModelConfig,
+  ChannelConfig,
+  DiagnosticResult,
+  AITestResult,
+} from '../services/api';
+
+import { api as apiClient } from '../services/api';
 import { apiLogger } from './logger';
 
-// 检查是否在 Tauri 环境中运行
-export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-}
+// Wrappers to maintain backward compatibility with existing Tauri API interface
+// The actual implementation now calls the Go backend via REST API
 
-// 带日志的 invoke 封装（自动检查 Tauri 环境）
-async function invokeWithLog<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri()) {
-    throw new Error('不在 Tauri 环境中运行，请通过 Tauri 应用启动');
-  }
-  apiLogger.apiCall(cmd, args);
+async function apiCallWithLog<T>(apiCall: () => Promise<T>): Promise<T> {
   try {
-    const result = await invoke<T>(cmd, args);
-    apiLogger.apiResponse(cmd, result);
+    const result = await apiCall();
     return result;
   } catch (error) {
-    apiLogger.apiError(cmd, error);
+    apiLogger.apiError('api', error);
     throw error;
   }
 }
 
-// 服务状态
-export interface ServiceStatus {
-  running: boolean;
-  pid: number | null;
-  port: number;
-  uptime_seconds: number | null;
-  memory_mb: number | null;
-  cpu_percent: number | null;
-}
+// Re-export the api client with backward-compatible interface
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const api: Record<string, (...args: any[]) => Promise<any>> = {
+  // Service management
+  getServiceStatus: () => apiCallWithLog(() => apiClient.getServiceStatus()),
+  startService: () => apiCallWithLog(() => apiClient.startService()),
+  stopService: () => apiCallWithLog(() => apiClient.stopService()),
+  restartService: () => apiCallWithLog(() => apiClient.restartService()),
+  getLogs: (lines?: number) => apiCallWithLog(() => apiClient.getLogs(lines)),
 
-// 系统信息
-export interface SystemInfo {
-  os: string;
-  os_version: string;
-  arch: string;
-  openclaw_installed: boolean;
-  openclaw_version: string | null;
-  node_version: string | null;
-  config_dir: string;
-}
+  // System information
+  getSystemInfo: () => apiCallWithLog(() => apiClient.getSystemInfo()),
+  checkOpenclawInstalled: () => apiCallWithLog(async () => {
+    const info = await apiClient.getSystemInfo();
+    return info.openclaw_installed;
+  }),
+  getOpenclawVersion: () => apiCallWithLog(async () => {
+    const info = await apiClient.getSystemInfo();
+    return info.openclaw_version ?? null;
+  }),
 
-// AI Provider 选项（旧版兼容）
-export interface AIProviderOption {
-  id: string;
-  name: string;
-  icon: string;
-  default_base_url: string | null;
-  models: AIModelOption[];
-  requires_api_key: boolean;
-}
+  // Configuration management
+  getConfig: () => apiCallWithLog(() => apiClient.getConfig()),
+  saveConfig: (config: unknown) => apiCallWithLog(() => apiClient.saveConfig(config as Record<string, unknown>)),
+  getEnvValue: (key: string) => apiCallWithLog(() => apiClient.getEnvValue(key)),
+  saveEnvValue: (key: string, value: string) => apiCallWithLog(() => apiClient.saveEnvValue(key, value)),
+  validateConfig: (config: unknown) => apiCallWithLog(() => apiClient.validateConfig?.(config as Record<string, unknown>)),
 
-export interface AIModelOption {
-  id: string;
-  name: string;
-  description: string | null;
-  recommended: boolean;
-}
+  // Gateway
+  getGatewayToken: () => apiCallWithLog(() => apiClient.getGatewayToken()),
+  getDashboardURL: () => apiCallWithLog(() => apiClient.getDashboardURL()),
 
-// 官方 Provider 预设
-export interface OfficialProvider {
-  id: string;
-  name: string;
-  icon: string;
-  default_base_url: string | null;
-  api_type: string;
-  suggested_models: SuggestedModel[];
-  requires_api_key: boolean;
-  docs_url: string | null;
-}
+  // AI Provider (legacy compatibility)
+  getAIProviders: () => apiCallWithLog(() => apiClient.getAIProviders()),
+  getOfficialProviders: () => apiCallWithLog(() => apiClient.getOfficialProviders()),
+  getAIConfig: () => apiCallWithLog(() => apiClient.getAIConfig()),
+  saveProvider: (providerName: string, baseUrl: string, apiKey: string | null, apiType: string, models: unknown[]) =>
+    apiCallWithLog(() => apiClient.saveProvider(providerName, baseUrl, apiKey, apiType, models as Parameters<typeof apiClient.saveProvider>[4])),
+  deleteProvider: (providerName: string) => apiCallWithLog(() => apiClient.deleteProvider(providerName)),
+  setPrimaryModel: (modelId: string) => apiCallWithLog(() => apiClient.setPrimaryModel(modelId)),
+  addAvailableModel: (modelId: string) => apiCallWithLog(() => apiClient.addAvailableModel(modelId)),
+  removeAvailableModel: (modelId: string) => apiCallWithLog(() => apiClient.removeAvailableModel(modelId)),
 
-export interface SuggestedModel {
-  id: string;
-  name: string;
-  description: string | null;
-  context_window: number | null;
-  max_tokens: number | null;
-  recommended: boolean;
-}
+  // Channels
+  getChannelsConfig: () => apiCallWithLog(() => apiClient.getChannelsConfig()),
+  saveChannelConfig: (channel: unknown) => apiCallWithLog(() => apiClient.saveChannelConfig(channel as Parameters<typeof apiClient.saveChannelConfig>[0])),
+  clearChannelConfig: (channelType: string) => apiCallWithLog(() => apiClient.clearChannelConfig(channelType)),
 
-// 已配置的 Provider
-export interface ConfiguredProvider {
-  name: string;
-  base_url: string;
-  api_key_masked: string | null;
-  has_api_key: boolean;
-  models: ConfiguredModel[];
-}
+  // Diagnostics
+  runDoctor: () => apiCallWithLog(() => apiClient.runDoctor()),
+  testAIConnection: () => apiCallWithLog(() => apiClient.testAIConnection()),
+  testChannel: (channelType: string) => apiCallWithLog(() => apiClient.testChannel(channelType)),
+  sendTestMessage: (channelType: string, target: string) => apiCallWithLog(() => apiClient.sendTestMessage(channelType, target)),
+  startChannelLogin: (channelType: string) => apiCallWithLog(() => apiClient.startChannelLogin(channelType)),
 
-export interface ConfiguredModel {
-  full_id: string;
-  id: string;
-  name: string;
-  api_type: string | null;
-  context_window: number | null;
-  max_tokens: number | null;
-  is_primary: boolean;
-}
+  // Agents
+  getAgents: () => apiCallWithLog(() => apiClient.getAgents()),
+  saveAgent: (agent: unknown) => apiCallWithLog(() => apiClient.saveAgent(agent)),
+  deleteAgent: (agentId: string) => apiCallWithLog(() => apiClient.deleteAgent(agentId)),
+  setDefaultAgent: (agentId: string) => apiCallWithLog(() => apiClient.setDefaultAgent(agentId)),
 
-// AI 配置概览
-export interface AIConfigOverview {
-  primary_model: string | null;
-  configured_providers: ConfiguredProvider[];
-  available_models: string[];
-}
+  // Skills
+  getSkills: () => apiCallWithLog(() => apiClient.getSkills()),
+  installSkill: (skillId: string) => apiCallWithLog(() => apiClient.installSkill(skillId)),
+  uninstallSkill: (skillId: string) => apiCallWithLog(() => apiClient.uninstallSkill(skillId)),
+  saveSkillConfig: (skillId: string, enabled: boolean, config: Record<string, unknown>) =>
+    apiCallWithLog(() => apiClient.saveSkillConfig(skillId, enabled, config)),
+  installCustomSkill: () => apiCallWithLog(() => apiClient.installCustomSkill()),
 
-// 模型配置
-export interface ModelConfig {
-  id: string;
-  name: string;
-  api: string | null;
-  input: string[];
-  context_window: number | null;
-  max_tokens: number | null;
-  reasoning: boolean | null;
-  cost: { input: number; output: number; cache_read: number; cache_write: number } | null;
-}
+  // Security
+  runSecurityScan: () => apiCallWithLog(() => apiClient.runSecurityScan()),
+  fixSecurityIssues: (issueIds: string[]) => apiCallWithLog(() => apiClient.fixSecurityIssues(issueIds)),
 
-// 渠道配置
-export interface ChannelConfig {
-  id: string;
-  channel_type: string;
-  enabled: boolean;
-  config: Record<string, unknown>;
-}
-
-// 诊断结果
-export interface DiagnosticResult {
-  name: string;
-  passed: boolean;
-  message: string;
-  suggestion: string | null;
-}
-
-// AI 测试结果
-export interface AITestResult {
-  success: boolean;
-  provider: string;
-  model: string;
-  response: string | null;
-  error: string | null;
-  latency_ms: number | null;
-}
-
-// API 封装（带日志）
-export const api = {
-  // 服务管理
-  getServiceStatus: () => invokeWithLog<ServiceStatus>('get_service_status'),
-  startService: () => invokeWithLog<string>('start_service'),
-  stopService: () => invokeWithLog<string>('stop_service'),
-  restartService: () => invokeWithLog<string>('restart_service'),
-  getLogs: (lines?: number) => invokeWithLog<string[]>('get_logs', { lines }),
-
-  // 系统信息
-  getSystemInfo: () => invokeWithLog<SystemInfo>('get_system_info'),
-  checkOpenclawInstalled: () => invokeWithLog<boolean>('check_openclaw_installed'),
-  getOpenclawVersion: () => invokeWithLog<string | null>('get_openclaw_version'),
-
-  // 配置管理
-  getConfig: () => invokeWithLog<unknown>('get_config'),
-  saveConfig: (config: unknown) => invokeWithLog<string>('save_config', { config }),
-  getEnvValue: (key: string) => invokeWithLog<string | null>('get_env_value', { key }),
-  saveEnvValue: (key: string, value: string) =>
-    invokeWithLog<string>('save_env_value', { key, value }),
-
-  // AI Provider（旧版兼容）
-  getAIProviders: () => invokeWithLog<AIProviderOption[]>('get_ai_providers'),
-
-  // AI 配置（新版）
-  getOfficialProviders: () => invokeWithLog<OfficialProvider[]>('get_official_providers'),
-  getAIConfig: () => invokeWithLog<AIConfigOverview>('get_ai_config'),
-  saveProvider: (
-    providerName: string,
-    baseUrl: string,
-    apiKey: string | null,
-    apiType: string,
-    models: ModelConfig[]
-  ) =>
-    invokeWithLog<string>('save_provider', {
-      providerName,
-      baseUrl,
-      apiKey,
-      apiType,
-      models,
-    }),
-  deleteProvider: (providerName: string) =>
-    invokeWithLog<string>('delete_provider', { providerName }),
-  setPrimaryModel: (modelId: string) =>
-    invokeWithLog<string>('set_primary_model', { modelId }),
-  addAvailableModel: (modelId: string) =>
-    invokeWithLog<string>('add_available_model', { modelId }),
-  removeAvailableModel: (modelId: string) =>
-    invokeWithLog<string>('remove_available_model', { modelId }),
-
-  // 渠道
-  getChannelsConfig: () => invokeWithLog<ChannelConfig[]>('get_channels_config'),
-  saveChannelConfig: (channel: ChannelConfig) =>
-    invokeWithLog<string>('save_channel_config', { channel }),
-
-  // 诊断测试
-  runDoctor: () => invokeWithLog<DiagnosticResult[]>('run_doctor'),
-  testAIConnection: () => invokeWithLog<AITestResult>('test_ai_connection'),
-  testChannel: (channelType: string) =>
-    invokeWithLog<unknown>('test_channel', { channelType }),
+  // Install
+  checkEnvironment: () => apiCallWithLog(() => apiClient.checkEnvironment()),
+  installNodeJS: () => apiCallWithLog(() => apiClient.installNodeJS()),
+  installOpenClaw: () => apiCallWithLog(() => apiClient.installOpenClaw()),
+  initConfig: () => apiCallWithLog(() => apiClient.initConfig()),
+  openInstallTerminal: (terminalType: string) => apiCallWithLog(() => apiClient.openInstallTerminal(terminalType)),
+  uninstallOpenClaw: () => apiCallWithLog(() => apiClient.uninstallOpenClaw()),
+  checkUpdate: () => apiCallWithLog(() => apiClient.checkUpdate()),
+  updateOpenClaw: () => apiCallWithLog(() => apiClient.updateOpenClaw()),
 };
+
+// isTauri is no longer relevant - we're using REST API
+export function isTauri(): boolean {
+  return false;
+}

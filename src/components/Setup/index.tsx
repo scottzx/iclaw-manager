@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import {
   CheckCircle2,
   Loader2,
@@ -12,6 +11,7 @@ import {
   Cpu,
   Package
 } from 'lucide-react';
+import { invoke } from '../../lib/invoke-shim';
 import { setupLogger } from '../../lib/logger';
 
 interface EnvironmentStatus {

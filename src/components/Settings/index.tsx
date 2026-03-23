@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import {
   User,
@@ -13,6 +12,7 @@ import {
   X,
   Globe,
 } from 'lucide-react';
+import { api } from '../../lib/tauri';
 
 interface InstallResult {
   success: boolean;
@@ -56,12 +56,11 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
 
   const openConfigDir = async () => {
     try {
-      const { open } = await import('@tauri-apps/plugin-shell');
-      const home = await invoke<{ config_dir: string }>('get_system_info');
-      // 尝试打开配置目录
-      await open(home.config_dir);
+      const info = await api.getSystemInfo();
+      // 尝试打开配置目录 - 在浏览器中无法直接打开目录
+      console.log('配置目录:', info.config_dir);
     } catch (e) {
-      console.error('打开目录失败:', e);
+      console.error('获取配置目录失败:', e);
     }
   };
 
@@ -69,9 +68,9 @@ export function Settings({ onEnvironmentChange }: SettingsProps) {
     setUninstalling(true);
     setUninstallResult(null);
     try {
-      const result = await invoke<InstallResult>('uninstall_openclaw');
-      setUninstallResult(result);
-      if (result.success) {
+      const result = await api.uninstallOpenClaw();
+      setUninstallResult({ success: true, message: result });
+      if (true) {
         // 通知环境状态变化，触发重新检查
         onEnvironmentChange?.();
         // 卸载成功后关闭确认框

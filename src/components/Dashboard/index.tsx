@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { StatusCard } from './StatusCard';
 import { QuickActions } from './QuickActions';
 import { SystemInfo } from './SystemInfo';
 import { Setup } from '../Setup';
-import { api, ServiceStatus, isTauri } from '../../lib/tauri';
+import { api, ServiceStatus } from '../../lib/tauri';
 import { Terminal, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import clsx from 'clsx';
 import { EnvironmentStatus } from '../../App';
@@ -27,10 +26,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchStatus = async () => {
-    if (!isTauri()) {
-      setLoading(false);
-      return;
-    }
     try {
       const result = await api.getServiceStatus();
       setStatus(result);
@@ -42,9 +37,8 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   };
 
   const fetchLogs = async () => {
-    if (!isTauri()) return;
     try {
-      const result = await invoke<string[]>('get_logs', { lines: 50 });
+      const result = await api.getLogs(50);
       setLogs(result);
     } catch {
       // 静默处理
@@ -54,7 +48,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   useEffect(() => {
     fetchStatus();
     fetchLogs();
-    if (!isTauri()) return;
 
     const statusInterval = setInterval(fetchStatus, 3000);
     const logsInterval = autoRefreshLogs ? setInterval(fetchLogs, 2000) : null;
@@ -73,7 +66,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   }, [logs, logsExpanded]);
 
   const handleStart = async () => {
-    if (!isTauri()) return;
     setActionLoading(true);
     try {
       await api.startService();
@@ -87,7 +79,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   };
 
   const handleStop = async () => {
-    if (!isTauri()) return;
     setActionLoading(true);
     try {
       await api.stopService();
@@ -101,7 +92,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   };
 
   const handleRestart = async () => {
-    if (!isTauri()) return;
     setActionLoading(true);
     try {
       await api.restartService();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Monitor, Package, Folder, CheckCircle, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { api, SystemInfo as SystemInfoType, isTauri } from '../../lib/tauri';
+import { api, SystemInfo as SystemInfoType } from '../../lib/tauri';
 
 export function SystemInfo() {
   const { t } = useTranslation();
@@ -10,10 +10,6 @@ export function SystemInfo() {
 
   useEffect(() => {
     const fetchInfo = async () => {
-      if (!isTauri()) {
-        setLoading(false);
-        return;
-      }
       try {
         const result = await api.getSystemInfo();
         setInfo(result);

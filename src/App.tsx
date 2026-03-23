@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
 import { Sidebar } from './components/Layout/Sidebar';
 import { Header } from './components/Layout/Header';
@@ -14,7 +13,7 @@ import { Security } from './components/Security';
 import { Testing } from './components/Testing';
 import { Logs } from './components/Logs';
 import { appLogger } from './lib/logger';
-import { isTauri } from './lib/tauri';
+import { api } from './lib/tauri';
 import { ThemeProvider } from './lib/ThemeContext';
 import { Download, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -65,15 +64,19 @@ function App() {
 
   // 检查环境
   const checkEnvironment = useCallback(async () => {
-    if (!isTauri()) {
-      appLogger.warn('不在 Tauri 环境中，跳过环境检查');
-      setIsReady(true);
-      return;
-    }
-
     appLogger.info('开始检查系统环境...');
     try {
-      const status = await invoke<EnvironmentStatus>('check_environment');
+      const info = await api.getSystemInfo();
+      const status: EnvironmentStatus = {
+        node_installed: !!info.node_version,
+        node_version: info.node_version ?? null,
+        node_version_ok: true,
+        openclaw_installed: info.openclaw_installed,
+        openclaw_version: info.openclaw_version ?? null,
+        config_dir_exists: true,
+        ready: info.openclaw_installed,
+        os: info.os,
+      };
       appLogger.info('环境检查完成', status);
       setEnvStatus(status);
       setIsReady(true);
@@ -85,11 +88,9 @@ function App() {
 
   // 检查更新
   const checkUpdate = useCallback(async () => {
-    if (!isTauri()) return;
-
     appLogger.info('检查 OpenClaw 更新...');
     try {
-      const info = await invoke<UpdateInfo>('check_openclaw_update');
+      const info = await api.checkUpdate() as UpdateInfo;
       appLogger.info('更新检查结果', info);
       setUpdateInfo(info);
       if (info.update_available) {
@@ -105,15 +106,13 @@ function App() {
     setUpdating(true);
     setUpdateResult(null);
     try {
-      const result = await invoke<UpdateResult>('update_openclaw');
-      setUpdateResult(result);
-      if (result.success) {
-        await checkEnvironment();
-        setTimeout(() => {
-          setShowUpdateBanner(false);
-          setUpdateResult(null);
-        }, 3000);
-      }
+      const result = await api.updateOpenClaw();
+      setUpdateResult({ success: true, message: result });
+      await checkEnvironment();
+      setTimeout(() => {
+        setShowUpdateBanner(false);
+        setUpdateResult(null);
+      }, 3000);
     } catch (e) {
       setUpdateResult({
         success: false,
@@ -131,7 +130,6 @@ function App() {
   }, [checkEnvironment]);
 
   useEffect(() => {
-    if (!isTauri()) return;
     const timer = setTimeout(() => {
       checkUpdate();
     }, 2000);
@@ -139,12 +137,10 @@ function App() {
   }, [checkUpdate]);
 
   useEffect(() => {
-    if (!isTauri()) return;
-
     const fetchServiceStatus = async () => {
       try {
-        const status = await invoke<ServiceStatus>('get_service_status');
-        setServiceStatus(status);
+        const status = await api.getServiceStatus();
+        setServiceStatus({ running: status.running, pid: status.pid, port: status.port });
       } catch {
         // 静默处理轮询错误
       }
