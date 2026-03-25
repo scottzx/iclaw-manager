@@ -3,10 +3,19 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"iclaw-admin-api/internal/handler"
+	"iclaw-admin-api/internal/service"
 )
 
 // SetupRouter 设置所有路由
 func SetupRouter(r *gin.Engine) {
+	// 初始化服务
+	systemService := service.NewSystemService()
+	networkService := service.NewNetworkService()
+
+	// 初始化处理器
+	systemHandler := handler.NewSystemHandler(systemService)
+	networkHandler := handler.NewNetworkHandler(networkService)
+
 	api := r.Group("/api")
 	{
 		// Service routes
@@ -24,6 +33,29 @@ func SetupRouter(r *gin.Engine) {
 		{
 			system.GET("/info", handler.GetSystemInfo)
 			system.GET("/device-ip", handler.GetDeviceIP)
+			// 新增系统监控路由
+			system.GET("/status", systemHandler.GetSystemStatus)
+			system.GET("/usage", systemHandler.GetSystemUsage)
+			system.POST("/openclaw/restart", systemHandler.RestartOpenClaw)
+		}
+
+		// Network routes (new)
+		network := api.Group("/network")
+		{
+			network.GET("/interfaces", networkHandler.GetInterfaces)
+
+			wifi := network.Group("/wifi")
+			{
+				wifi.GET("/scan", networkHandler.ScanWifi)
+				wifi.POST("/connect", networkHandler.ConnectWifi)
+			}
+
+			ap := network.Group("/ap")
+			{
+				ap.GET("", networkHandler.GetApStatus)
+				ap.POST("/start", networkHandler.StartAp)
+				ap.POST("/stop", networkHandler.StopAp)
+			}
 		}
 
 		// Config routes

@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { StatusCard } from './StatusCard';
 import { QuickActions } from './QuickActions';
 import { SystemInfo } from './SystemInfo';
 import { Setup } from '../Setup';
+import { DeviceStats } from './DeviceStats';
 import { api, ServiceStatus } from '../../lib/tauri';
 import { Terminal, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import clsx from 'clsx';
@@ -18,7 +18,6 @@ interface DashboardProps {
 export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<ServiceStatus | null>(null);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [logsExpanded, setLogsExpanded] = useState(true);
@@ -31,8 +30,6 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
       setStatus(result);
     } catch {
       // 静默处理
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -149,7 +146,7 @@ export function Dashboard({ envStatus, onSetupComplete }: DashboardProps) {
         )}
 
         <motion.div variants={itemVariants}>
-          <StatusCard status={status} loading={loading} />
+          <DeviceStats />
         </motion.div>
 
         <motion.div variants={itemVariants}>

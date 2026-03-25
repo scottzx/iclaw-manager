@@ -17,10 +17,13 @@ func main() {
 		port = "1420" // 前端端口
 	}
 
-	// 获取可执行文件所在目录
-	execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	// 静态文件在可执行文件同级目录
-	staticDir := execDir
+	// 静态文件目录 - 优先使用 dist 目录（前端构建产物）
+	staticDir := "dist"
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		// 如果 dist 不存在，使用可执行文件所在目录
+		execDir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+		staticDir = execDir
+	}
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
