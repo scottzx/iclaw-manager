@@ -71,6 +71,13 @@ func main() {
 			c.File(filepath.Join(staticDir, "index.html"))
 		})
 		r.Static("/assets", filepath.Join(staticDir, "assets"))
+		r.Static("/icons", filepath.Join(staticDir, "icons"))
+		// PWA static files
+		r.StaticFile("/manifest.json", filepath.Join(staticDir, "manifest.json"))
+		r.StaticFile("/sw.js", filepath.Join(staticDir, "sw.js"))
+		r.StaticFile("/registerSW.js", filepath.Join(staticDir, "registerSW.js"))
+		r.StaticFile("/workbox-78ef5c9b.js", filepath.Join(staticDir, "workbox-78ef5c9b.js"))
+		r.StaticFile("/claw.svg", filepath.Join(staticDir, "claw.svg"))
 		// SPA fallback - only non-API routes serve index.html
 		r.NoRoute(func(c *gin.Context) {
 			if !strings.HasPrefix(c.Request.URL.Path, "/api") {

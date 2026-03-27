@@ -667,6 +667,7 @@ func GetChannelsConfig() ([]model.ChannelConfig, error) {
 		{"dingtalk-connector", "dingtalk-connector"},
 		{"msteams", "msteams"},
 		{"signal", "signal"},
+		{"qqbot", "qqbot"},
 	}
 
 	channels := make([]model.ChannelConfig, 0)
